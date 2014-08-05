@@ -48,9 +48,19 @@ for i in xrange(n_utt_chunks):
     utt_sq_fft_chunks[i] = np.fft.fft(utt_sq[:,start_idx:end_idx],n=n_fft_times)
     overlap_start_idx = i*(n_fft_times - n_template_times + 1)
     overlap_add_likelihoods[overlap_start_idx:overlap_start_idx + n_fft_times] += np.real(np.fft.ifft((template_mean_cov_fft*utt_fft_chunks[i] - .5*template_cov_fft * utt_sq_fft_chunks[i]).sum(0) * np.exp(2j*np.pi * np.arange(n_fft_times)/n_fft_times*-(n_template_times -1)),axis=-1))
+
     
 overlap_add_likelihoods += normal_constant
 np.testing.assert_array_almost_equal(overlap_add_likelihoods[4:100], base_likelihoods)
+
+fast_mult_overlap_chunk_response = np.real(np.fft.ifft((template_mean_cov_fft*utt_fft_chunks - .5 * template_cov_fft * utt_sq_fft_chunks).sum(-2) * np.exp(2j*np.pi * np.arange(n_fft_times)/n_fft_times * -(n_template_times - 1)),axis=-1))
+diff_overlap_add = normal_constant * np.ones(n_overlap_likelihoods)
+for i in xrange(n_utt_chunks):
+    overlap_start_idx = i*(n_fft_times - n_template_times + 1)
+    diff_overlap_add[overlap_start_idx:overlap_start_idx+n_fft_times] += fast_mult_overlap_chunk_response[i]
+
+
+np.testing.assert_array_almost_equal(overlap_add_likelihoods, diff_overlap_add)
 
 
 np.real(np.fft.ifft((template_mean_cov_fft*utt_fft_chunks[0] - .5*template_cov_fft * utt_sq_fft_chunks[0]).sum(0),axis=-1)) + normal_constant
