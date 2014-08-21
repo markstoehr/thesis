@@ -23,6 +23,8 @@ np.import_array()
 cdef extern from "cblas.h":
     double ddot "cblas_ddot"(int, double *, int, double *, int) nogil
     void dscal "cblas_dscal"(int, double, double *, int) nogil
+    void saxpy "cblas_saxpy"(int, float,float *,
+                 int, float *, int) nogil
 
 
 def lsvm_inference(np.ndarray[SINGLE_t,ndim=2] likes, 
@@ -70,5 +72,46 @@ def lsvm_inference(np.ndarray[SINGLE_t,ndim=2] likes,
 
     return max_likes, max_like_components
 
+def test_saxpy_subtract(np.ndarray[SINGLE_t,ndim=2] mean_gradients,
+                        np.ndarray[SINGLE_t,ndim=2] X,
+                        np.ndarray[INT_t,ndim=1] max_like_components):
+    cdef:
+        unsigned int data_id
+        unsigned int n_data = X.shape[0]
+        unsigned int n_features = X.shape[1]
+        unsigned int n_components = mean_gradients.shape[0]
+        float *mean_grad_ptr = <float *>mean_gradients.data
+        float *X_ptr = <float *>X.data
+
+    for data_id in range(n_data):
+        saxpy(n_features, -1.0, X_ptr,1,
+                  <float *>(mean_grad_ptr + max_like_components[data_id]*n_features),1)
+
+        if data_id < n_data -1:
+            X_ptr += n_features
     
+def compute_mean_gradient(np.ndarray[INT_t,ndim=1] hinge_data_idx, 
+                          np.ndarray[SINGLE_t,ndim=2] mean_gradients,
+                          np.ndarray[SINGLE_t,ndim=3] data_mean_diff,
+                          np.ndarray[INT_t,ndim=2] max_like_components):
+    """
+    """
+    cdef:
+        unsigned int data_id, true_component_id, false_component_id
+        unsigned int n_data = data_mean_diff.shape[0]
+        unsigned int n_features = data_mean_diff.shape[2]
+        unsigned int n_components = mean_gradients.shape[0]
+        unsigned int n_component_features = n_features * n_components
+        float *mean_grad_ptr = <float *>mean_gradients.data
+        float *data_diff_ptr = <float *>data_mean_diff.data
+
+    for data_id in range(n_data):
+        if hinge_data_idx[data_id] > 0: # check whether there is a margin violation
+            saxpy(n_features, -1.0, <float *>(data_diff_ptr + max_like_components[data_id,0]*n_features) ,1,
+                  <float *>(mean_grad_ptr + max_like_components[data_id,0]*n_features),1)
+            saxpy(n_features, 1.0, <float *>(data_diff_ptr + max_like_components[data_id,1]*n_features),1,
+                  <float *>(mean_grad_ptr + max_like_components[data_id,1]*n_features),1)
+
+        if data_id < n_data -1:
+            data_diff_ptr += n_component_features
     
