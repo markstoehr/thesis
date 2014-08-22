@@ -47,6 +47,7 @@ parser.add_argument('--fl_prefix',type=str)
 parser.add_argument('--fl_suffix',type=str)
 parser.add_argument('--hdf5_file',type=str,help='file to save to')
 parser.add_argument('--class_indices_path',type=str,help='file to save the file indices to')
+parser.add_argument('--dset',type=str,help='dataset we are working on')
 args = parser.parse_args()
 
 # get the length of the file
@@ -58,7 +59,7 @@ phn_data_indices = DataIndices()
 for phn_id, phn in enumerate(args.phns):
     print phn_id, phn
     fpath = '{0}/{1}_{2}'.format(args.fl_prefix,phn,args.fl_suffix)
-    X = np.loadtxt('{0}_train.dat'.format(fpath)).T
+    X = np.loadtxt('{0}_{1}.dat'.format(fpath,args.dset)).T
     n_data, n_features = X.shape
     phn_data_indices.add_indices(phn_id,n_data)
 
@@ -69,13 +70,13 @@ chunksize = 1000
 n_chunks = n_data // chunksize + (n_data % chunksize > 0)
 n_rows=n_chunks*chunksize
 
-dset = f.create_dataset("train_data",
+dset = f.create_dataset("{0}_data".format(args.dset),
     (n_data,
      n_features),dtype=np.float32)
 
-dset_labels = f.create_dataset("train_labels",
+dset_labels = f.create_dataset("{0}_labels".format(args.dset),
     (n_data,
-     ),dtype=np.int16)
+     ),dtype=np.int32)
 
 np.random.seed(0)
 phn_data_indices.permute_indices()
@@ -84,7 +85,7 @@ perm = np.random.permutation(n_data)
 for phn_id, phn in enumerate(args.phns):
     print phn_id, phn
     fpath = '{0}/{1}_{2}'.format(args.fl_prefix,phn,args.fl_suffix)
-    X = np.loadtxt('{0}_train.dat'.format(fpath)).T
+    X = np.loadtxt('{0}_{1}.dat'.format(fpath,args.dset)).T
     phn_indices = np.where(phn_data_indices.class_indices == phn_id)[0]
     if len(phn_indices) != len(X):
         import pdb; pdb.set_trace()
@@ -98,4 +99,3 @@ f.flush()
 np.save(args.class_indices_path,phn_data_indices.class_indices)
                         
 
-import pdb; pdb.set_trace()
