@@ -115,3 +115,23 @@ def compute_mean_gradient(np.ndarray[INT_t,ndim=1] hinge_data_idx,
         if data_id < n_data -1:
             data_diff_ptr += n_component_features
     
+def update_confusion_matrix(np.ndarray[SINGLE_t, ndim=2] conf_mat,
+                            np.ndarray[INT_t,ndim=1] class_ids,
+                            np.ndarray[SINGLE_t, ndim=2] max_likes,
+                            np.ndarray[INT_t,ndim=2] max_like_components):
+    """
+    """
+    cdef:
+        unsigned int data_id, true_class, best_false_class
+        unsigned int n_data = max_likes.shape[0]
+        unsigned int n_classes = conf_mat.shape[0]
+
+    for data_id in range(n_data):
+        true_class = class_ids[max_like_components[data_id,0]]
+        best_false_class = class_ids[max_like_components[data_id,1]]
+        if max_likes[data_id,1] >= max_likes[data_id,0]:
+            conf_mat[true_class,
+                     best_false_class] += 1
+        else:
+            conf_mat[true_class,
+                     true_class] += 1
