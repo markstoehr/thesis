@@ -114,6 +114,32 @@ def compute_mean_gradient(np.ndarray[INT_t,ndim=1] hinge_data_idx,
 
         if data_id < n_data -1:
             data_diff_ptr += n_component_features
+
+def compute_weights_gradient(np.ndarray[INT_t,ndim=1] hinge_data_idx, 
+                             np.ndarray[SINGLE_t,ndim=2] X,
+                             np.ndarray[SINGLE_t,ndim=2] weights_gradient,
+                             np.ndarray[INT_t,ndim=2] max_like_components):
+    """
+    """
+    cdef:
+        unsigned int data_id
+        unsigned int n_data = hinge_data_idx.shape[0]
+        unsigned int n_features = weights_gradient.shape[1]
+        unsigned int n_components = weights_gradient.shape[0]
+        unsigned int n_component_features = n_features * n_components
+        float *weights_grad_ptr = <float *>weights_gradient.data
+        float *X_ptr = <float *>X.data
+        float coeff = 1.0/(<float> n_data)
+
+    for data_id in range(n_data):
+        if hinge_data_idx[data_id] > 0: # check whether there is a margin violation
+            saxpy(n_features, -coeff, X_ptr,1,
+                  <float *>(weights_grad_ptr + max_like_components[data_id,0]*n_features),1)
+            saxpy(n_features, coeff, X_ptr,1,
+                  <float *>(weights_grad_ptr + max_like_components[data_id,1]*n_features),1)
+
+        if data_id < n_data -1:
+            X_ptr += n_features
     
 def update_confusion_matrix(np.ndarray[SINGLE_t, ndim=2] conf_mat,
                             np.ndarray[INT_t,ndim=1] class_ids,
